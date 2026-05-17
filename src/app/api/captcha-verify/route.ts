@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { signCookieValue, CAPTCHA_COOKIE_NAME } from '@/lib/captcha-cookie';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 const ONE_HOUR_MS = 3600_000;
 
