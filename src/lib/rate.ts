@@ -36,10 +36,10 @@ export async function runRate(input: RunRateInput): Promise<RunRateResult> {
   };
   await sb.from('works').upsert(workRow);
 
-  const ratingRow = raw.known
+  const ratingRow: Record<string, unknown> = raw.known
     ? {
         slug: input.slug,
-        known: true as const,
+        known: true,
         score: raw.score,
         verdict: raw.verdict,
         synopsis: raw.synopsis,
@@ -49,7 +49,7 @@ export async function runRate(input: RunRateInput): Promise<RunRateResult> {
       }
     : {
         slug: input.slug,
-        known: false as const,
+        known: false,
         model: CLAUDE_MODEL,
       };
   await sb.from('ratings').upsert(ratingRow);
