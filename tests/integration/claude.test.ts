@@ -43,3 +43,34 @@ describe('callRate', () => {
     });
   });
 });
+
+import { http, HttpResponse } from 'msw';
+
+describe('callRate retry behavior', () => {
+  it('retries once on 5xx then succeeds', async () => {
+    let calls = 0;
+    server.use(
+      http.post('https://api.anthropic.com/v1/messages', () => {
+        calls++;
+        if (calls === 1) {
+          return HttpResponse.json({ type: 'error', error: { message: 'overloaded' } }, { status: 529 });
+        }
+        return HttpResponse.json({
+          id: 'msg', type: 'message', role: 'assistant', model: 'claude-haiku-4-5-20251001',
+          content: [{ type: 'tool_use', id: 't', name: 'submit_rating', input: { known: false } }],
+          stop_reason: 'tool_use', usage: { input_tokens: 1, output_tokens: 1 },
+        });
+      })
+    );
+    const result = await callRate({ title: 'X', creator: 'Y', year: 2020, medium: 'book' });
+    expect(calls).toBe(2);
+    expect(result).toEqual({ known: false });
+  });
+
+  it('throws after second consecutive 5xx', async () => {
+    server.use(http.post('https://api.anthropic.com/v1/messages', () =>
+      HttpResponse.json({ type: 'error', error: { message: 'overloaded' } }, { status: 529 })
+    ));
+    await expect(callRate({ title: 'X', creator: 'Y', year: 2020, medium: 'book' })).rejects.toThrow();
+  });
+});

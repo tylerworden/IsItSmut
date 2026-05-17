@@ -11,10 +11,23 @@ function getClient(): Anthropic {
   if (!_client) {
     _client = new Anthropic({
       apiKey: process.env.ANTHROPIC_API_KEY,
+      maxRetries: 0,
       fetch: (...args) => globalThis.fetch(...(args as Parameters<typeof fetch>)),
     });
   }
   return _client;
+}
+
+async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (err) {
+    if (err instanceof Anthropic.APIError && err.status != null && err.status >= 500) {
+      await new Promise((r) => setTimeout(r, 500));
+      return await fn();
+    }
+    throw err;
+  }
 }
 
 const disambiguateTool: Tool = {
@@ -82,7 +95,7 @@ function extractTool<T>(message: Message, name: string): T {
 }
 
 export async function callDisambiguate(query: string): Promise<DisambiguateRaw> {
-  const message = await getClient().messages.create({
+  const message = await withRetry(() => getClient().messages.create({
     model: MODEL,
     max_tokens: 512,
     temperature: 0,
@@ -90,14 +103,14 @@ export async function callDisambiguate(query: string): Promise<DisambiguateRaw> 
     tools: [disambiguateTool],
     tool_choice: { type: 'tool', name: 'submit_candidates' },
     messages: [{ role: 'user', content: query }],
-  });
+  }));
   return extractTool<DisambiguateRaw>(message, 'submit_candidates');
 }
 
 export async function callRate(work: {
   title: string; creator: string; year: number | null; medium: string;
 }): Promise<RateRaw> {
-  const message = await getClient().messages.create({
+  const message = await withRetry(() => getClient().messages.create({
     model: MODEL,
     max_tokens: 512,
     temperature: 0,
@@ -105,6 +118,6 @@ export async function callRate(work: {
     tools: [rateTool],
     tool_choice: { type: 'tool', name: 'submit_rating' },
     messages: [{ role: 'user', content: buildRateUserMessage(work) }],
-  });
+  }));
   return extractTool<RateRaw>(message, 'submit_rating');
 }
