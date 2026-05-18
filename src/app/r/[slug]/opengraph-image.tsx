@@ -44,8 +44,9 @@ export default async function Image({ params }: { params: Promise<{ slug: string
           }}
         >
           <div style={{ fontSize: 18, letterSpacing: 4, opacity: 0.9 }}>SMUT RATING</div>
-          <div style={{ fontSize: 120, fontWeight: 900, lineHeight: 1 }}>
-            {score}<span style={{ fontSize: 56, opacity: 0.8 }}>/10</span>
+          <div style={{ display: 'flex', alignItems: 'baseline', fontSize: 120, fontWeight: 900, lineHeight: 1 }}>
+            <span>{score}</span>
+            <span style={{ fontSize: 56, opacity: 0.8 }}>/10</span>
           </div>
           <div style={{ fontSize: 28, fontWeight: 600 }}>{verdict}</div>
         </div>
