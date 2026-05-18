@@ -1,5 +1,6 @@
 import { callRate, CLAUDE_MODEL } from './claude';
 import { supabaseServer } from './supabase-server';
+import { adjustScore, verdictFromScore } from './verdict';
 import type { Rating, Medium } from './types';
 
 export type RunRateInput = {
@@ -17,7 +18,12 @@ export async function getCachedRating(slug: string): Promise<Rating | null> {
     .eq('slug', slug)
     .maybeSingle();
   if (error || !data) return null;
-  return data as Rating;
+  const row = data as Rating;
+  if (row.known) {
+    const adjusted = adjustScore(row.score);
+    return { ...row, score: adjusted, verdict: verdictFromScore(adjusted) };
+  }
+  return row;
 }
 
 export async function runRate(input: RunRateInput): Promise<RunRateResult> {

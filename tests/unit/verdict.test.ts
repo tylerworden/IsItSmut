@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { verdictFromScore } from '@/lib/verdict';
+import { verdictFromScore, adjustScore } from '@/lib/verdict';
 
 describe('verdictFromScore', () => {
   it.each([
@@ -18,5 +18,22 @@ describe('verdictFromScore', () => {
   it('throws on out-of-range scores', () => {
     expect(() => verdictFromScore(0)).toThrow();
     expect(() => verdictFromScore(11)).toThrow();
+  });
+});
+
+describe('adjustScore', () => {
+  it.each([
+    [1, 1],
+    [2, 2],
+    [3, 4],
+    [4, 5],
+    [5, 6],
+    [6, 7],
+    [7, 8],
+    [8, 9],
+    [9, 9],
+    [10, 10],
+  ])('raw %i → adjusted %i', (raw, expected) => {
+    expect(adjustScore(raw)).toBe(expected);
   });
 });

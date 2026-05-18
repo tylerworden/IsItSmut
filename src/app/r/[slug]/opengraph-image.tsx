@@ -1,5 +1,6 @@
 import { ImageResponse } from 'next/og';
 import { supabaseServer } from '@/lib/supabase-server';
+import { getCachedRating } from '@/lib/rate';
 
 export const runtime = 'nodejs';
 export const alt = 'IsItSmut rating';
@@ -9,10 +10,11 @@ export const contentType = 'image/png';
 export default async function Image({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const sb = supabaseServer();
-  const [{ data: work }, { data: rating }] = await Promise.all([
+  const [workRes, rating] = await Promise.all([
     sb.from('works').select('*').eq('slug', slug).maybeSingle(),
-    sb.from('ratings').select('*').eq('slug', slug).maybeSingle(),
+    getCachedRating(slug),
   ]);
+  const work = workRes.data;
 
   const known = rating?.known === true;
   const score: string | number = known ? rating.score : '—';
