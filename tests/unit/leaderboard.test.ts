@@ -59,4 +59,19 @@ describe('getTopRatings', () => {
     expect(result.map((r) => r.slug)).toEqual(['c', 'a', 'b']);
     expect(result.map((r) => r.score)).toEqual([10, 9, 9]); // raw 10→10, raw 9→9, raw 8→9
   });
+
+  it('breaks ties on adjusted score by view_count desc, then slug asc', async () => {
+    // After adjustment, all three resolve to 9: raw 9→9, raw 8→9, raw 8→9
+    limitMock.mockResolvedValueOnce({
+      data: [
+        row({ slug: 'm-zzz', score: 9, view_count: 10 }),
+        row({ slug: 'a-aaa', score: 8, view_count: 50 }),
+        row({ slug: 'a-bbb', score: 8, view_count: 50 }),
+      ],
+      error: null,
+    });
+    const result = await getTopRatings(10);
+    // All adjusted to 9; tie broken first by view_count desc, then by slug asc
+    expect(result.map((r) => r.slug)).toEqual(['a-aaa', 'a-bbb', 'm-zzz']);
+  });
 });
