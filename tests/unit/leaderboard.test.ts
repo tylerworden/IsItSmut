@@ -74,4 +74,22 @@ describe('getTopRatings', () => {
     // All adjusted to 9; tie broken first by view_count desc, then by slug asc
     expect(result.map((r) => r.slug)).toEqual(['a-aaa', 'a-bbb', 'm-zzz']);
   });
+
+  it('returns [] when supabase returns an error', async () => {
+    limitMock.mockResolvedValueOnce({ data: null, error: { message: 'boom' } });
+    const result = await getTopRatings(10);
+    expect(result).toEqual([]);
+  });
+
+  it('returns [] when supabase returns null data', async () => {
+    limitMock.mockResolvedValueOnce({ data: null, error: null });
+    const result = await getTopRatings(10);
+    expect(result).toEqual([]);
+  });
+
+  it('returns [] when getTopRatings throws (e.g., env var missing)', async () => {
+    limitMock.mockRejectedValueOnce(new Error('connection refused'));
+    const result = await getTopRatings(10);
+    expect(result).toEqual([]);
+  });
 });
