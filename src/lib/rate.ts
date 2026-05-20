@@ -72,12 +72,32 @@ export async function runRate(input: RunRateInput): Promise<RunRateResult> {
     throw new Error(`ratings upsert failed: ${ratingsRes.error.message ?? 'unknown'} (code=${ratingsRes.error.code ?? 'unknown'})`);
   }
 
-  const fresh = await getCachedRating(input.slug);
-  if (!fresh) {
-    console.error('rating disappeared after upsert', { slug: input.slug, rawKnown: raw.known });
-    throw new Error('Rating disappeared after upsert (works + ratings upsert returned ok but re-fetch returned null — likely an RLS or schema issue blocking SELECT)');
+  const now = new Date().toISOString();
+  let rating: Rating;
+  if (raw.known) {
+    const adjusted = adjustScore(raw.score);
+    rating = {
+      slug: input.slug,
+      known: true,
+      score: adjusted,
+      verdict: verdictFromScore(adjusted),
+      synopsis: raw.synopsis,
+      details: raw.details,
+      tags: raw.tags,
+      model: CLAUDE_MODEL,
+      rated_at: now,
+      view_count: 0,
+    };
+  } else {
+    rating = {
+      slug: input.slug,
+      known: false,
+      model: CLAUDE_MODEL,
+      rated_at: now,
+      view_count: 0,
+    };
   }
-  return { rating: fresh, cacheHit: false };
+  return { rating, cacheHit: false };
 }
 
 export async function bumpViewCount(slug: string): Promise<void> {

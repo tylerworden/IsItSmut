@@ -66,7 +66,7 @@ describe('runRate', () => {
     expect(result.rating.known).toBe(true);
   });
 
-  it('calls Claude on cache miss, writes works + ratings', async () => {
+  it('calls Claude on cache miss, writes works + ratings, returns adjusted rating from raw response', async () => {
     vi.mocked(claudeMod.callRate).mockResolvedValueOnce({
       known: true, score: 7, verdict: "Yes, it's smut.",
       synopsis: 'syn', details: 'det', tags: ['Open door', 'Romance'],
@@ -79,7 +79,19 @@ describe('runRate', () => {
     expect(claudeMod.callRate).toHaveBeenCalledOnce();
     expect(worksStore.has('fourth-wing-yarros-2023')).toBe(true);
     expect(ratingsStore.has('fourth-wing-yarros-2023')).toBe(true);
-    expect(result.rating.known).toBe(true);
+    // Rating is constructed in-memory (no re-fetch from DB), so score is
+    // adjusted from raw 7 → 8 and verdict reflects the adjusted score.
+    expect(result.rating).toMatchObject({
+      slug: 'fourth-wing-yarros-2023',
+      known: true,
+      score: 8,
+      verdict: "Yes, it's smut.",
+      synopsis: 'syn',
+      details: 'det',
+      tags: ['Open door', 'Romance'],
+      model: 'claude-haiku-4-5-20251001',
+      view_count: 0,
+    });
   });
 
   it('persists known=false from Claude', async () => {
