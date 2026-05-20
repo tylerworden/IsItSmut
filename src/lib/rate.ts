@@ -17,7 +17,11 @@ export async function getCachedRating(slug: string): Promise<Rating | null> {
     .select('*')
     .eq('slug', slug)
     .maybeSingle();
-  if (error || !data) return null;
+  if (error) {
+    console.error('getCachedRating query error', { slug, error });
+    return null;
+  }
+  if (!data) return null;
   const row = data as Rating;
   if (row.known) {
     const adjusted = adjustScore(row.score);
@@ -40,7 +44,11 @@ export async function runRate(input: RunRateInput): Promise<RunRateResult> {
     creator: input.candidate.creator,
     year: input.candidate.year,
   };
-  await sb.from('works').upsert(workRow);
+  const worksRes = await sb.from('works').upsert(workRow);
+  if (worksRes.error) {
+    console.error('works upsert failed', { slug: input.slug, error: worksRes.error });
+    throw new Error(`works upsert failed: ${worksRes.error.message ?? 'unknown'} (code=${worksRes.error.code ?? 'unknown'})`);
+  }
 
   const ratingRow: Record<string, unknown> = raw.known
     ? {
@@ -58,10 +66,17 @@ export async function runRate(input: RunRateInput): Promise<RunRateResult> {
         known: false,
         model: CLAUDE_MODEL,
       };
-  await sb.from('ratings').upsert(ratingRow);
+  const ratingsRes = await sb.from('ratings').upsert(ratingRow);
+  if (ratingsRes.error) {
+    console.error('ratings upsert failed', { slug: input.slug, error: ratingsRes.error });
+    throw new Error(`ratings upsert failed: ${ratingsRes.error.message ?? 'unknown'} (code=${ratingsRes.error.code ?? 'unknown'})`);
+  }
 
   const fresh = await getCachedRating(input.slug);
-  if (!fresh) throw new Error('Rating disappeared after upsert');
+  if (!fresh) {
+    console.error('rating disappeared after upsert', { slug: input.slug, rawKnown: raw.known });
+    throw new Error('Rating disappeared after upsert (works + ratings upsert returned ok but re-fetch returned null — likely an RLS or schema issue blocking SELECT)');
+  }
   return { rating: fresh, cacheHit: false };
 }
 
