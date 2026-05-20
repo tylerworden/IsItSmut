@@ -21,6 +21,22 @@ export async function GET() {
   const test4 = await sb.from('ratings').select('slug').like('slug', 'the-signal%');
   const test5 = await sb.from('ratings').select('slug, score').eq('known', true).not('score', 'is', null).order('score', { ascending: false }).limit(3);
 
+  // test6 reproduces the suspected bug: read-then-write-then-read-same-url
+  // within a single request. If dedup is happening, t6_after returns null
+  // even though the row exists.
+  const dedupSlug = `debug-dedup-test-${Date.now()}`;
+  const t6_before = await sb.from('ratings').select('*').eq('slug', dedupSlug).maybeSingle();
+  await sb.from('works').upsert({
+    slug: dedupSlug, medium: 'book', title: 'debug', creator: 'debug', year: 2026,
+  });
+  await sb.from('ratings').upsert({
+    slug: dedupSlug, known: false, model: 'debug',
+  });
+  const t6_after = await sb.from('ratings').select('*').eq('slug', dedupSlug).maybeSingle();
+  // Cleanup
+  await sb.from('ratings').delete().eq('slug', dedupSlug);
+  await sb.from('works').delete().eq('slug', dedupSlug);
+
   return NextResponse.json({
     env: {
       url_prefix: urlRaw.substring(0, 30) + '...',
@@ -48,6 +64,12 @@ export async function GET() {
     test5_leaderboard_top3: {
       slugs: test5.data?.map((r) => ({ slug: r.slug, score: r.score })) ?? [],
       error: test5.error,
+    },
+    test6_dedup_proof: {
+      t6_before_found: t6_before.data != null,
+      t6_after_found: t6_after.data != null,
+      // If t6_after_found is FALSE, dedup is the bug.
+      // If t6_after_found is TRUE, something else is going on.
     },
   });
 }
