@@ -25,8 +25,8 @@ describe('ResultCard — known', () => {
       />
     );
     expect(screen.getByText('8')).toBeInTheDocument();
-    // verdict appears in the header and in the Q&A line — confirm at least one
-    expect(screen.getAllByText(/yes, it's smut/i).length).toBeGreaterThan(0);
+    // verdict appears in both the header and the Q&A line
+    expect(screen.getAllByText(/yes, it's smut/i)).toHaveLength(2);
     expect(screen.getByText('Fourth Wing')).toBeInTheDocument();
     expect(screen.getByText(/is fourth wing smut\?/i)).toBeInTheDocument();
     expect(screen.getByText(/war college/i)).toBeInTheDocument();
