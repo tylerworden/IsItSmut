@@ -13,6 +13,9 @@ export const metadata: Metadata = {
     siteName: 'IsItSmut',
     type: 'website',
   },
+  verification: {
+    google: 'Fa1-HAQl-Kz_Opn76fyEUSkjx_ElShvctcmOOMX5Mlk',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
