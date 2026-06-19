@@ -12,4 +12,11 @@ describe('Footer', () => {
     expect(screen.getByRole('link', { name: /Terms/i })).toHaveAttribute('href', '/terms');
     expect(screen.getByRole('link', { name: /Privacy/i })).toHaveAttribute('href', '/privacy');
   });
+
+  it('links to the browse hub pages', () => {
+    render(<Footer />);
+    expect(screen.getByRole('link', { name: 'Books' })).toHaveAttribute('href', '/books');
+    expect(screen.getByRole('link', { name: 'Movies' })).toHaveAttribute('href', '/movies');
+    expect(screen.getByRole('link', { name: 'TV' })).toHaveAttribute('href', '/tv');
+  });
 });
