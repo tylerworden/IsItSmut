@@ -25,18 +25,25 @@ type Row = {
   };
 };
 
-export async function getTopRatings(limit: number): Promise<LeaderboardEntry[]> {
+type Order = 'smuttiest' | 'tamest';
+
+async function queryRatings(opts: { medium?: Medium; order: Order; limit: number }): Promise<LeaderboardEntry[]> {
   try {
     const sb = supabaseServer();
-    const { data, error } = await sb
+    let q = sb
       .from('ratings')
       .select('slug, score, view_count, works!inner(title, creator, medium, year)')
       .eq('known', true)
-      .not('score', 'is', null)
-      .order('score', { ascending: false })
+      .not('score', 'is', null);
+
+    if (opts.medium) q = q.eq('works.medium', opts.medium);
+
+    const ascending = opts.order === 'tamest';
+    const { data, error } = await q
+      .order('score', { ascending })
       .order('view_count', { ascending: false })
       .order('slug', { ascending: true })
-      .limit(limit);
+      .limit(opts.limit);
 
     if (error) {
       console.error('leaderboard query error:', error);
@@ -45,6 +52,7 @@ export async function getTopRatings(limit: number): Promise<LeaderboardEntry[]> 
     if (!data) return [];
 
     const rows = data as unknown as Row[];
+    const dir = opts.order === 'tamest' ? 1 : -1;
     return rows
       .map((r): LeaderboardEntry => {
         const adjusted = adjustScore(r.score);
@@ -60,7 +68,7 @@ export async function getTopRatings(limit: number): Promise<LeaderboardEntry[]> 
         };
       })
       .sort((a, b) => {
-        if (a.score !== b.score) return b.score - a.score;
+        if (a.score !== b.score) return (a.score - b.score) * dir;
         if (a.viewCount !== b.viewCount) return b.viewCount - a.viewCount;
         return a.slug.localeCompare(b.slug);
       });
@@ -68,4 +76,16 @@ export async function getTopRatings(limit: number): Promise<LeaderboardEntry[]> 
     console.error('leaderboard exception:', err);
     return [];
   }
+}
+
+export async function getTopRatings(limit: number): Promise<LeaderboardEntry[]> {
+  return queryRatings({ order: 'smuttiest', limit });
+}
+
+export async function getRatingsByMedium(medium: Medium, limit: number): Promise<LeaderboardEntry[]> {
+  return queryRatings({ medium, order: 'smuttiest', limit });
+}
+
+export async function getTamestRatings(limit: number): Promise<LeaderboardEntry[]> {
+  return queryRatings({ order: 'tamest', limit });
 }

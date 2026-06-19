@@ -19,7 +19,7 @@ vi.mock('@/lib/supabase-server', () => ({
   supabaseServer: () => supabaseMock,
 }));
 
-import { getTopRatings } from '@/lib/leaderboard';
+import { getTopRatings, getRatingsByMedium, getTamestRatings } from '@/lib/leaderboard';
 
 function row(opts: {
   slug: string;
@@ -91,5 +91,30 @@ describe('getTopRatings', () => {
     limitMock.mockRejectedValueOnce(new Error('connection refused'));
     const result = await getTopRatings(10);
     expect(result).toEqual([]);
+  });
+});
+
+describe('getRatingsByMedium', () => {
+  beforeEach(() => { limitMock.mockReset(); });
+  it('filters by medium and returns adjusted entries (smuttiest first)', async () => {
+    limitMock.mockResolvedValueOnce({
+      data: [row({ slug: 'b1', score: 9, medium: 'book' }), row({ slug: 'b2', score: 8, medium: 'book' })],
+      error: null,
+    });
+    const result = await getRatingsByMedium('book', 50);
+    expect(supabaseMock.eq).toHaveBeenCalledWith('works.medium', 'book');
+    expect(result.map((r) => r.score)).toEqual([9, 9]); // raw 9->9, raw 8->9
+  });
+});
+
+describe('getTamestRatings', () => {
+  beforeEach(() => { limitMock.mockReset(); });
+  it('orders by adjusted score ascending', async () => {
+    limitMock.mockResolvedValueOnce({
+      data: [row({ slug: 'low', score: 1 }), row({ slug: 'mid', score: 5 }), row({ slug: 'hi', score: 9 })],
+      error: null,
+    });
+    const result = await getTamestRatings(50);
+    expect(result.map((r) => r.slug)).toEqual(['low', 'mid', 'hi']); // adjusted 1,6,9
   });
 });
