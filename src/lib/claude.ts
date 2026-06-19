@@ -3,6 +3,7 @@ import type { Tool, Message } from '@anthropic-ai/sdk/resources/messages';
 import { DISAMBIGUATE_SYSTEM_PROMPT, RATE_SYSTEM_PROMPT, buildRateUserMessage } from './prompts';
 
 const MODEL = 'claude-haiku-4-5-20251001';
+const SONNET_MODEL = 'claude-sonnet-4-6';
 
 export const CLAUDE_MODEL = MODEL;
 
@@ -94,9 +95,9 @@ function extractTool<T>(message: Message, name: string): T {
   throw new Error(`Expected tool_use block "${name}" in Claude response`);
 }
 
-export async function callDisambiguate(query: string): Promise<DisambiguateRaw> {
+async function disambiguateWith(query: string, model: string): Promise<DisambiguateRaw> {
   const message = await withRetry(() => getClient().messages.create({
-    model: MODEL,
+    model,
     max_tokens: 512,
     temperature: 0,
     system: [{ type: 'text', text: DISAMBIGUATE_SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
@@ -107,11 +108,23 @@ export async function callDisambiguate(query: string): Promise<DisambiguateRaw> 
   return extractTool<DisambiguateRaw>(message, 'submit_candidates');
 }
 
-export async function callRate(work: {
+export async function callDisambiguate(query: string): Promise<DisambiguateRaw> {
+  const primary = await disambiguateWith(query, MODEL);
+  if (primary.candidates.length > 0) return primary;
+  // Escalate misses to the stronger model; fall back to the empty primary on error.
+  try {
+    return await disambiguateWith(query, SONNET_MODEL);
+  } catch (err) {
+    console.error('disambiguate escalation failed', err);
+    return primary;
+  }
+}
+
+async function rateWith(work: {
   title: string; creator: string; year: number | null; medium: string;
-}): Promise<RateRaw> {
+}, model: string): Promise<RateRaw> {
   const message = await withRetry(() => getClient().messages.create({
-    model: MODEL,
+    model,
     max_tokens: 512,
     temperature: 0,
     system: [{ type: 'text', text: RATE_SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
@@ -120,4 +133,21 @@ export async function callRate(work: {
     messages: [{ role: 'user', content: buildRateUserMessage(work) }],
   }));
   return extractTool<RateRaw>(message, 'submit_rating');
+}
+
+export type RateResult = { raw: RateRaw; model: string };
+
+export async function callRate(work: {
+  title: string; creator: string; year: number | null; medium: string;
+}): Promise<RateResult> {
+  const primary = await rateWith(work, MODEL);
+  if (primary.known) return { raw: primary, model: MODEL };
+  // Escalate misses to the stronger model; fall back to the primary miss on error.
+  try {
+    const escalated = await rateWith(work, SONNET_MODEL);
+    return { raw: escalated, model: SONNET_MODEL };
+  } catch (err) {
+    console.error('rate escalation failed', err);
+    return { raw: primary, model: MODEL };
+  }
 }
