@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { supabaseServer } from '@/lib/supabase-server';
 import { getCachedRating, runRate, bumpViewCount } from '@/lib/rate';
 import { ResultCard } from '@/components/ResultCard';
+import { resultMetadata } from '@/lib/seo';
 import type { Work, Medium } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -54,9 +55,10 @@ export default async function ResultPage({ params, searchParams }: PageProps) {
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const work = await fetchWork(slug);
-  if (!work) return { title: 'Not found — IsItSmut' };
-  return {
-    title: `Is "${work.title}" smut? — IsItSmut`,
-    description: `Smut rating, synopsis, and spoiler-blurred content details for "${work.title}".`,
-  };
+  if (!work) {
+    return { title: 'Not found — IsItSmut', robots: { index: false, follow: true } };
+  }
+  const rating = await getCachedRating(slug);
+  // No cached rating yet (page reached via search params): treat as unknown for indexing.
+  return resultMetadata(work, rating ?? { slug, known: false, model: '', rated_at: '', view_count: 0 });
 }
