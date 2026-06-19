@@ -30,3 +30,36 @@ describe('buildQuestionAnswer', () => {
     );
   });
 });
+
+import { buildJsonLd } from '@/lib/seo';
+
+describe('buildJsonLd', () => {
+  it('emits a Book with a nested Review for a known book', () => {
+    const ld = buildJsonLd(work, known) as Record<string, unknown>;
+    expect(ld['@context']).toBe('https://schema.org');
+    expect(ld['@type']).toBe('Book');
+    expect(ld.name).toBe('Fourth Wing');
+    expect(ld.author).toEqual({ '@type': 'Person', name: 'Rebecca Yarros' });
+    expect(ld.datePublished).toBe('2023');
+    const review = ld.review as Record<string, unknown>;
+    expect(review['@type']).toBe('Review');
+    expect(review.reviewRating).toEqual({
+      '@type': 'Rating', ratingValue: 8, bestRating: 10, worstRating: 1,
+    });
+    expect((review.author as Record<string, unknown>).name).toBe('IsItSmut');
+  });
+
+  it('uses Movie/director and TVSeries/creator types', () => {
+    const movie = buildJsonLd({ ...work, medium: 'movie' }, known) as Record<string, unknown>;
+    expect(movie['@type']).toBe('Movie');
+    expect(movie.director).toEqual({ '@type': 'Person', name: 'Rebecca Yarros' });
+    const tv = buildJsonLd({ ...work, medium: 'tv' }, known) as Record<string, unknown>;
+    expect(tv['@type']).toBe('TVSeries');
+    expect(tv.creator).toEqual({ '@type': 'Person', name: 'Rebecca Yarros' });
+  });
+
+  it('omits datePublished when year is null', () => {
+    const ld = buildJsonLd({ ...work, year: null }, known) as Record<string, unknown>;
+    expect(ld.datePublished).toBeUndefined();
+  });
+});
