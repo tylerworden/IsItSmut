@@ -115,6 +115,8 @@ describe('getTamestRatings', () => {
       error: null,
     });
     const result = await getTamestRatings(50);
+    // Assert the DB sort direction too — the JS re-sort would otherwise mask a wrong DB order.
+    expect(supabaseMock.order).toHaveBeenCalledWith('score', { ascending: true });
     expect(result.map((r) => r.slug)).toEqual(['low', 'mid', 'hi']); // adjusted 1,6,9
   });
 });
