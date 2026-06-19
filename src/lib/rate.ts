@@ -1,4 +1,4 @@
-import { callRate, CLAUDE_MODEL } from './claude';
+import { callRate } from './claude';
 import { supabaseServer } from './supabase-server';
 import { adjustScore, verdictFromScore } from './verdict';
 import type { Rating, Medium } from './types';
@@ -34,7 +34,7 @@ export async function runRate(input: RunRateInput): Promise<RunRateResult> {
   const cached = await getCachedRating(input.slug);
   if (cached) return { rating: cached, cacheHit: true };
 
-  const raw = await callRate(input.candidate);
+  const { raw, model } = await callRate(input.candidate);
   const sb = supabaseServer();
 
   const workRow = {
@@ -59,12 +59,12 @@ export async function runRate(input: RunRateInput): Promise<RunRateResult> {
         synopsis: raw.synopsis,
         details: raw.details,
         tags: raw.tags,
-        model: CLAUDE_MODEL,
+        model,
       }
     : {
         slug: input.slug,
         known: false,
-        model: CLAUDE_MODEL,
+        model,
       };
   const ratingsRes = await sb.from('ratings').upsert(ratingRow);
   if (ratingsRes.error) {
@@ -84,7 +84,7 @@ export async function runRate(input: RunRateInput): Promise<RunRateResult> {
       synopsis: raw.synopsis,
       details: raw.details,
       tags: raw.tags,
-      model: CLAUDE_MODEL,
+      model,
       rated_at: now,
       view_count: 0,
     };
@@ -92,7 +92,7 @@ export async function runRate(input: RunRateInput): Promise<RunRateResult> {
     rating = {
       slug: input.slug,
       known: false,
-      model: CLAUDE_MODEL,
+      model,
       rated_at: now,
       view_count: 0,
     };

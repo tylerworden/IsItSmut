@@ -8,7 +8,6 @@ const worksStore = new Map<string, unknown>();
 
 vi.mock('@/lib/claude', () => ({
   callRate: vi.fn(),
-  CLAUDE_MODEL: 'claude-haiku-4-5-20251001',
 }));
 
 vi.mock('@/lib/supabase-server', () => ({
@@ -68,8 +67,8 @@ describe('runRate', () => {
 
   it('calls Claude on cache miss, writes works + ratings, returns adjusted rating from raw response', async () => {
     vi.mocked(claudeMod.callRate).mockResolvedValueOnce({
-      known: true, score: 7, verdict: "Yes, it's smut.",
-      synopsis: 'syn', details: 'det', tags: ['Open door', 'Romance'],
+      raw: { known: true, score: 7, verdict: "Yes, it's smut.", synopsis: 'syn', details: 'det', tags: ['Open door', 'Romance'] },
+      model: 'claude-haiku-4-5-20251001',
     });
     const result = await runRate({
       slug: 'fourth-wing-yarros-2023',
@@ -95,12 +94,25 @@ describe('runRate', () => {
   });
 
   it('persists known=false from Claude', async () => {
-    vi.mocked(claudeMod.callRate).mockResolvedValueOnce({ known: false });
+    vi.mocked(claudeMod.callRate).mockResolvedValueOnce({ raw: { known: false }, model: 'claude-haiku-4-5-20251001' });
     const result = await runRate({
       slug: 'obscure-book-author-2024',
       candidate: { title: 'Obscure', creator: 'Some Author', year: 2024, medium: 'book' },
     });
     expect(result.rating.known).toBe(false);
     expect(ratingsStore.get('obscure-book-author-2024')).toMatchObject({ known: false });
+  });
+
+  it('persists the model reported by callRate (e.g. Sonnet escalation)', async () => {
+    vi.mocked(claudeMod.callRate).mockResolvedValueOnce({
+      raw: { known: true, score: 5, verdict: 'A little spicy.', synopsis: 's', details: 'd', tags: ['x', 'y'] },
+      model: 'claude-sonnet-4-6',
+    });
+    const result = await runRate({
+      slug: 'normal-people-rooney-2020',
+      candidate: { title: 'Normal People', creator: 'Sally Rooney', year: 2020, medium: 'tv' },
+    });
+    expect(result.rating.model).toBe('claude-sonnet-4-6');
+    expect((ratingsStore.get('normal-people-rooney-2020') as { model: string }).model).toBe('claude-sonnet-4-6');
   });
 });
