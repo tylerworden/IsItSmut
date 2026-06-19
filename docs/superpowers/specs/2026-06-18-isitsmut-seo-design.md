@@ -106,7 +106,7 @@ Titles where Claude returns `known:false` simply won't get indexable pages — t
 
 ### Cross-cutting
 
-**Rendering / ISR.** Add `export const revalidate = 86400` (≈1 day) to result and hub pages so crawlers and users receive fast cached HTML; ratings rarely change. Result pages keep the Node runtime. (This replaces always-dynamic rendering for these routes; the rate API and disambiguate API are unaffected.)
+**Rendering / ISR.** Add `export const revalidate = 86400` (≈1 day) to the **hub pages** (and `/top`) so crawlers and users receive fast cached HTML; their underlying leaderboard data rarely changes. **Result pages stay dynamic SSR** and do *not* get ISR: the route `await`s `searchParams` (for rate-on-first-visit), which forces dynamic rendering in Next 15, so a `revalidate` export there would be a no-op. Dynamic SSR already returns fully-rendered, crawlable HTML, so this is purely a caching/cost optimization that only the param-free hub routes can actually benefit from. Restructuring the result route to be ISR-cacheable is out of scope (risky refactor, no SEO upside). The rate and disambiguate APIs are unaffected.
 
 **Error handling.** Sitemap and hub queries degrade gracefully: sitemap falls back to static+hub entries; hubs render the existing empty-state on query failure. Structured data and the Q&A block are emitted only when `known:true`.
 
