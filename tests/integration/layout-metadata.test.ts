@@ -7,6 +7,8 @@ describe('root layout metadata', () => {
   });
   it('declares a default openGraph site name and locale', () => {
     expect(metadata.openGraph?.siteName).toBe('IsItSmut');
-    expect(metadata.openGraph?.type).toBe('website');
+    // Cast needed: Next.js types `openGraph` as a discriminated union where
+    // `.type` only exists on specific variants, not the base OpenGraphMetadata.
+    expect((metadata.openGraph as { type?: string })?.type).toBe('website');
   });
 });
