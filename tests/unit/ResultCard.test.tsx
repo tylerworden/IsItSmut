@@ -25,8 +25,10 @@ describe('ResultCard — known', () => {
       />
     );
     expect(screen.getByText('8')).toBeInTheDocument();
-    expect(screen.getByText(/yes, it's smut/i)).toBeInTheDocument();
+    // verdict appears in both the header and the Q&A line
+    expect(screen.getAllByText(/yes, it's smut/i)).toHaveLength(2);
     expect(screen.getByText('Fourth Wing')).toBeInTheDocument();
+    expect(screen.getByText(/is fourth wing smut\?/i)).toBeInTheDocument();
     expect(screen.getByText(/war college/i)).toBeInTheDocument();
     expect(screen.getByText('Open door')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /tap to reveal/i })).toBeInTheDocument();

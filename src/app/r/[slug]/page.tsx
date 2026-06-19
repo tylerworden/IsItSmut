@@ -2,6 +2,10 @@ import { notFound } from 'next/navigation';
 import { supabaseServer } from '@/lib/supabase-server';
 import { getCachedRating, runRate, bumpViewCount } from '@/lib/rate';
 import { ResultCard } from '@/components/ResultCard';
+import { JsonLd } from '@/components/JsonLd';
+import { resultMetadata, buildJsonLd } from '@/lib/seo';
+import { RelatedTitles } from '@/components/RelatedTitles';
+import { getRelatedTitles } from '@/lib/related';
 import type { Work, Medium } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -48,15 +52,24 @@ export default async function ResultPage({ params, searchParams }: PageProps) {
   const base = process.env.NEXT_PUBLIC_SHARE_BASE_URL ?? 'http://localhost:3000';
   const shareUrl = `${base}/r/${slug}`;
 
-  return <ResultCard work={work} rating={rating} shareUrl={shareUrl} />;
+  const related = rating.known ? await getRelatedTitles(slug, work.medium, 4) : [];
+
+  return (
+    <>
+      {rating.known && <JsonLd data={buildJsonLd(work, rating)} />}
+      <ResultCard work={work} rating={rating} shareUrl={shareUrl} />
+      {rating.known && <RelatedTitles entries={related} medium={work.medium} />}
+    </>
+  );
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const work = await fetchWork(slug);
-  if (!work) return { title: 'Not found — IsItSmut' };
-  return {
-    title: `Is "${work.title}" smut? — IsItSmut`,
-    description: `Smut rating, synopsis, and spoiler-blurred content details for "${work.title}".`,
-  };
+  if (!work) {
+    return { title: 'Not found — IsItSmut', robots: { index: false, follow: true } };
+  }
+  const rating = await getCachedRating(slug);
+  // No cached rating yet (page reached via search params): treat as unknown for indexing.
+  return resultMetadata(work, rating ?? { slug, known: false, model: '', rated_at: '', view_count: 0 });
 }
