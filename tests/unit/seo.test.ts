@@ -1,6 +1,6 @@
 // tests/unit/seo.test.ts
 import { describe, it, expect } from 'vitest';
-import { SITE_URL, buildQuestionAnswer } from '@/lib/seo';
+import { SITE_URL, buildQuestionAnswer, buildJsonLd, resultMetadata } from '@/lib/seo';
 import type { Work, Rating } from '@/lib/types';
 
 const work: Work = {
@@ -30,8 +30,6 @@ describe('buildQuestionAnswer', () => {
     );
   });
 });
-
-import { buildJsonLd } from '@/lib/seo';
 
 describe('buildJsonLd', () => {
   it('emits a Book with a nested Review for a known book', () => {
@@ -63,8 +61,6 @@ describe('buildJsonLd', () => {
     expect(ld.datePublished).toBeUndefined();
   });
 });
-
-import { resultMetadata } from '@/lib/seo';
 
 describe('resultMetadata', () => {
   it('builds indexable metadata for a known rating', () => {

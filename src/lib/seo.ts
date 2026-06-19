@@ -1,5 +1,6 @@
 // src/lib/seo.ts
-import type { Work, Rating } from './types';
+import type { Work, Rating, Medium } from './types';
+import type { Metadata } from 'next';
 
 // Apex is the canonical origin (see spec: Vercel primary-domain flip is a manual follow-up).
 // Reuse the existing share-base env var so there is one source of truth.
@@ -10,8 +11,6 @@ type KnownRating = Extract<Rating, { known: true }>;
 export function buildQuestionAnswer(work: Work, rating: KnownRating): string {
   return `Is ${work.title} smut? ${rating.verdict} It scores ${rating.score}/10 for sexual content.`;
 }
-
-import type { Medium } from './types';
 
 const WORK_TYPE: Record<Medium, string> = { book: 'Book', movie: 'Movie', tv: 'TVSeries' };
 // schema.org property naming differs per type for the primary creator.
@@ -34,8 +33,6 @@ export function buildJsonLd(work: Work, rating: KnownRating): Record<string, unk
     },
   };
 }
-
-import type { Metadata } from 'next';
 
 function clamp(s: string, max = 155): string {
   return s.length <= max ? s : s.slice(0, max - 1).trimEnd() + '…';
