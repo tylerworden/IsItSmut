@@ -1,5 +1,6 @@
 import { SpoilerReveal } from './SpoilerReveal';
 import { ShareButton } from './ShareButton';
+import { buildQuestionAnswer } from '@/lib/seo';
 import type { Work, Rating, Medium } from '@/lib/types';
 
 const MEDIUM_LABEL: Record<Medium, string> = { book: 'Book', movie: 'Movie', tv: 'TV' };
@@ -10,7 +11,7 @@ type Props = {
   shareUrl: string;
 };
 
-const SUGGEST_URL = 'https://docs.google.com/forms/d/e/PLACEHOLDER/viewform';
+const SUGGEST_URL = 'mailto:tworden1993@gmail.com?subject=IsItSmut%20rating%20suggestion';
 
 export function ResultCard({ work, rating, shareUrl }: Props) {
   if (!rating.known) {
@@ -51,6 +52,9 @@ export function ResultCard({ work, rating, shareUrl }: Props) {
             {work.creator} · {work.year ?? '—'} · {MEDIUM_LABEL[work.medium]}
           </p>
         </div>
+        <p className="text-sm font-semibold text-[color:var(--color-ink)]">
+          {buildQuestionAnswer(work, rating)}
+        </p>
         <p className="text-sm leading-relaxed text-[color:var(--color-ink)]">{rating.synopsis}</p>
         {rating.tags.length > 0 && (
           <div className="flex flex-wrap gap-1.5">

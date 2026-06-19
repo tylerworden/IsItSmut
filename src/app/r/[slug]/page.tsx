@@ -2,7 +2,8 @@ import { notFound } from 'next/navigation';
 import { supabaseServer } from '@/lib/supabase-server';
 import { getCachedRating, runRate, bumpViewCount } from '@/lib/rate';
 import { ResultCard } from '@/components/ResultCard';
-import { resultMetadata } from '@/lib/seo';
+import { JsonLd } from '@/components/JsonLd';
+import { resultMetadata, buildJsonLd } from '@/lib/seo';
 import type { Work, Medium } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -49,7 +50,12 @@ export default async function ResultPage({ params, searchParams }: PageProps) {
   const base = process.env.NEXT_PUBLIC_SHARE_BASE_URL ?? 'http://localhost:3000';
   const shareUrl = `${base}/r/${slug}`;
 
-  return <ResultCard work={work} rating={rating} shareUrl={shareUrl} />;
+  return (
+    <>
+      {rating.known && <JsonLd data={buildJsonLd(work, rating)} />}
+      <ResultCard work={work} rating={rating} shareUrl={shareUrl} />
+    </>
+  );
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
