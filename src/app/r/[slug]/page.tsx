@@ -4,6 +4,8 @@ import { getCachedRating, runRate, bumpViewCount } from '@/lib/rate';
 import { ResultCard } from '@/components/ResultCard';
 import { JsonLd } from '@/components/JsonLd';
 import { resultMetadata, buildJsonLd } from '@/lib/seo';
+import { RelatedTitles } from '@/components/RelatedTitles';
+import { getRelatedTitles } from '@/lib/related';
 import type { Work, Medium } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -50,10 +52,13 @@ export default async function ResultPage({ params, searchParams }: PageProps) {
   const base = process.env.NEXT_PUBLIC_SHARE_BASE_URL ?? 'http://localhost:3000';
   const shareUrl = `${base}/r/${slug}`;
 
+  const related = rating.known ? await getRelatedTitles(slug, work.medium, 4) : [];
+
   return (
     <>
       {rating.known && <JsonLd data={buildJsonLd(work, rating)} />}
       <ResultCard work={work} rating={rating} shareUrl={shareUrl} />
+      {rating.known && <RelatedTitles entries={related} medium={work.medium} />}
     </>
   );
 }
