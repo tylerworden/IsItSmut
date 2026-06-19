@@ -34,3 +34,32 @@ export function buildJsonLd(work: Work, rating: KnownRating): Record<string, unk
     },
   };
 }
+
+import type { Metadata } from 'next';
+
+function clamp(s: string, max = 155): string {
+  return s.length <= max ? s : s.slice(0, max - 1).trimEnd() + '…';
+}
+
+export function resultMetadata(work: Work, rating: Rating): Metadata {
+  const canonical = `/r/${work.slug}`;
+  if (!rating.known) {
+    return {
+      title: `${work.title} — IsItSmut`,
+      description: `We don't have a smut rating for ${work.title} yet.`,
+      alternates: { canonical },
+      robots: { index: false, follow: true },
+    };
+  }
+  const title = `Is "${work.title}" Smut? ${rating.verdict} (${rating.score}/10) — IsItSmut`;
+  const description = clamp(
+    `${rating.verdict} ${work.title} by ${work.creator} scores ${rating.score}/10 for sexual content. ${rating.synopsis}`
+  );
+  return {
+    title,
+    description,
+    alternates: { canonical },
+    openGraph: { title, description, type: 'article', url: canonical },
+    twitter: { card: 'summary_large_image', title, description },
+  };
+}

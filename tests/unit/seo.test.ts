@@ -63,3 +63,26 @@ describe('buildJsonLd', () => {
     expect(ld.datePublished).toBeUndefined();
   });
 });
+
+import { resultMetadata } from '@/lib/seo';
+
+describe('resultMetadata', () => {
+  it('builds indexable metadata for a known rating', () => {
+    const m = resultMetadata(work, known);
+    expect(m.title).toBe('Is "Fourth Wing" Smut? Yes, it\'s smut. (8/10) — IsItSmut');
+    expect(m.alternates?.canonical).toBe('/r/fourth-wing-yarros-2023');
+    // robots undefined/index:true => indexable
+    expect(m.robots).toBeUndefined();
+    expect(m.openGraph?.title).toBe('Is "Fourth Wing" Smut? Yes, it\'s smut. (8/10) — IsItSmut');
+    expect((m.twitter as { card?: string })?.card).toBe('summary_large_image');
+    expect(typeof m.description).toBe('string');
+    expect((m.description as string).length).toBeLessThanOrEqual(160);
+  });
+
+  it('noindexes an unknown rating but keeps a canonical', () => {
+    const m = resultMetadata(work, { slug: work.slug, known: false, model: 'm', rated_at: '0', view_count: 0 });
+    expect(m.robots).toEqual({ index: false, follow: true });
+    expect(m.alternates?.canonical).toBe('/r/fourth-wing-yarros-2023');
+    expect(m.title).toBe('Fourth Wing — IsItSmut');
+  });
+});
