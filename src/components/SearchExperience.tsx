@@ -7,6 +7,7 @@ import { TryTheseChips } from '@/components/TryTheseChips';
 import { DisambiguationPicker } from '@/components/DisambiguationPicker';
 import { CaptchaModal } from '@/components/CaptchaModal';
 import type { Candidate } from '@/lib/types';
+import { track, ANALYTICS_EVENTS } from '@/lib/analytics';
 
 const TRY_THESE = ['Fourth Wing', 'It Ends With Us', 'Bridgerton', 'A Court of Thorns and Roses', 'Normal People'];
 
@@ -19,6 +20,7 @@ export function SearchExperience() {
   const [pendingQuery, setPendingQuery] = useState<string | null>(null);
 
   async function handleSearch(query: string) {
+    track(ANALYTICS_EVENTS.searchSubmitted, { query });
     setLoading(true);
     setError(null);
     setCandidates(null);
