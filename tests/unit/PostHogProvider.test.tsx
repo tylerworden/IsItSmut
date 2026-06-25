@@ -54,6 +54,8 @@ describe('PostHogProvider', () => {
   it('captures $pageview with $current_url (pathname + query) when PostHog is loaded', () => {
     mockPathname = '/books';
     mockSearchParams = new URLSearchParams('q=fourth+wing');
+    // When __loaded is true, the provider's effect calls setReady(true) directly
+    // without going through init, so ready flips synchronously during render.
     ph.__loaded = true;
 
     render(<PostHogProvider><div>child</div></PostHogProvider>);
@@ -66,10 +68,30 @@ describe('PostHogProvider', () => {
   it('does NOT capture $pageview when PostHog is not yet loaded', () => {
     mockPathname = '/books';
     mockSearchParams = new URLSearchParams('q=fourth+wing');
-    // ph.__loaded is already false from beforeEach
+    // ph.__loaded is already false from beforeEach.
+    // The default init mock does NOT invoke `loaded`, so ready stays false.
 
     render(<PostHogProvider><div>child</div></PostHogProvider>);
 
     expect(ph.capture).not.toHaveBeenCalled();
+  });
+
+  it('fires the initial $pageview after init completes (race fix)', () => {
+    // Simulate the race: __loaded is false on first mount, but init finishes
+    // (via the `loaded` callback) synchronously in this mock. This proves that
+    // the pageview is NOT lost when the child effect runs before the parent's
+    // init effect.
+    mockPathname = '/race';
+    mockSearchParams = new URLSearchParams('');
+
+    ph.init.mockImplementationOnce((_key: string, opts: { loaded?: () => void }) => {
+      opts.loaded?.();
+    });
+
+    render(<PostHogProvider><div>child</div></PostHogProvider>);
+
+    expect(ph.capture).toHaveBeenCalledWith('$pageview', {
+      $current_url: '/race',
+    });
   });
 });
