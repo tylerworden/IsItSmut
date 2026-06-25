@@ -13,11 +13,13 @@ export function ShareButton({ url, title, slug }: Props) {
       try {
         await navigator.share({ url, title: `Is "${title}" smut?` });
         track(ANALYTICS_EVENTS.shareClicked, { slug, method: 'native' });
-        return;
       } catch {
-        // User cancelled; fall through to clipboard fallback below.
+        // User cancelled the native share sheet — no share occurred; do not
+        // copy or track.
       }
+      return;
     }
+    // No Web Share API: copying the link is the share action.
     await navigator.clipboard.writeText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);

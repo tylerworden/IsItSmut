@@ -39,4 +39,15 @@ describe('ShareButton', () => {
     expect(share).toHaveBeenCalledWith({ url: 'https://isitsmut.com/r/x', title: 'Is "X" smut?' });
     expect(track).toHaveBeenCalledWith('share_clicked', { slug: 'x', method: 'native' });
   });
+
+  it('does NOT copy or track when the native share is cancelled', async () => {
+    // Simulate user cancelling the OS share sheet
+    Object.assign(navigator, {
+      share: vi.fn(async () => { throw new Error('cancel'); }),
+    });
+    render(<ShareButton url="https://isitsmut.com/r/x" title="X" slug="x" />);
+    await userEvent.click(screen.getByRole('button', { name: /share/i }));
+    expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
+    expect(track).not.toHaveBeenCalled();
+  });
 });
