@@ -1,6 +1,16 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+vi.mock('@/lib/analytics', () => ({
+  track: vi.fn(),
+  ANALYTICS_EVENTS: {
+    detailsRevealed: 'details_revealed',
+    shareClicked: 'share_clicked',
+  },
+}));
+
 import { ResultCard } from '@/components/ResultCard';
+import { track } from '@/lib/analytics';
 
 const work = {
   slug: 'fourth-wing-yarros-2023',
@@ -9,6 +19,8 @@ const work = {
   creator: 'Rebecca Yarros',
   year: 2023,
 };
+
+beforeEach(() => vi.clearAllMocks());
 
 describe('ResultCard — known', () => {
   it('renders score, verdict, synopsis, tags, blurred details', () => {
@@ -25,7 +37,6 @@ describe('ResultCard — known', () => {
       />
     );
     expect(screen.getByText('8')).toBeInTheDocument();
-    // verdict appears in both the header and the Q&A line
     expect(screen.getAllByText(/yes, it's smut/i)).toHaveLength(2);
     expect(screen.getByText('Fourth Wing')).toBeInTheDocument();
     expect(screen.getByText(/is fourth wing smut\?/i)).toBeInTheDocument();
@@ -36,7 +47,7 @@ describe('ResultCard — known', () => {
 });
 
 describe('ResultCard — unknown', () => {
-  it('renders helpful message for known=false', () => {
+  it('renders helpful message and fires no_score_shown', () => {
     render(
       <ResultCard
         work={work}
@@ -45,5 +56,8 @@ describe('ResultCard — unknown', () => {
       />
     );
     expect(screen.getByText(/don't have a reliable read/i)).toBeInTheDocument();
+    expect(track).toHaveBeenCalledWith('no_score_shown', {
+      slug: 'fourth-wing-yarros-2023', title: 'Fourth Wing', medium: 'book',
+    });
   });
 });

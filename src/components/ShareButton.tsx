@@ -1,24 +1,29 @@
 'use client';
 
 import { useState } from 'react';
+import { track, ANALYTICS_EVENTS } from '@/lib/analytics';
 
-type Props = { url: string; title: string };
+type Props = { url: string; title: string; slug?: string };
 
-export function ShareButton({ url, title }: Props) {
+export function ShareButton({ url, title, slug }: Props) {
   const [copied, setCopied] = useState(false);
 
   async function handleClick() {
     if (typeof navigator.share === 'function') {
       try {
         await navigator.share({ url, title: `Is "${title}" smut?` });
-        return;
+        track(ANALYTICS_EVENTS.shareClicked, { slug, method: 'native' });
       } catch {
-        // User cancelled; fall through to clipboard fallback below.
+        // User cancelled the native share sheet — no share occurred; do not
+        // copy or track.
       }
+      return;
     }
+    // No Web Share API: copying the link is the share action.
     await navigator.clipboard.writeText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+    track(ANALYTICS_EVENTS.shareClicked, { slug, method: 'clipboard' });
   }
 
   return (

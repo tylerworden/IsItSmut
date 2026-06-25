@@ -1,5 +1,6 @@
 import { SpoilerReveal } from './SpoilerReveal';
 import { ShareButton } from './ShareButton';
+import { TrackOnMount } from './TrackOnMount';
 import { buildQuestionAnswer } from '@/lib/seo';
 import type { Work, Rating, Medium } from '@/lib/types';
 
@@ -17,6 +18,10 @@ export function ResultCard({ work, rating, shareUrl }: Props) {
   if (!rating.known) {
     return (
       <div className="rounded-2xl bg-white p-6 shadow-[0_6px_18px_rgba(212,80,107,0.10)]">
+        <TrackOnMount
+          event="no_score_shown"
+          properties={{ slug: work.slug, title: work.title, medium: work.medium }}
+        />
         <h1 className="text-xl font-bold text-[color:var(--color-ink)]">{work.title}</h1>
         <p className="mt-1 text-xs text-[color:var(--color-ink-quiet)]">
           {work.creator} · {work.year ?? '—'} · {MEDIUM_LABEL[work.medium]}
@@ -69,10 +74,12 @@ export function ResultCard({ work, rating, shareUrl }: Props) {
           <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[color:var(--color-ink-quiet)]">
             What&apos;s in it 🔒
           </div>
-          <SpoilerReveal>{rating.details}</SpoilerReveal>
+          <SpoilerReveal slug={work.slug} medium={work.medium} score={rating.score}>
+            {rating.details}
+          </SpoilerReveal>
         </div>
         <div className="flex justify-end pt-1">
-          <ShareButton url={shareUrl} title={work.title} />
+          <ShareButton url={shareUrl} title={work.title} slug={work.slug} />
         </div>
       </div>
     </article>
