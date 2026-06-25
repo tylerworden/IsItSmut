@@ -9,6 +9,7 @@ function PostHogPageView() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
+    // Guard: skip capture until posthog.init has completed — firing before init would be a no-op at best and an error at worst
     if (!(posthog as { __loaded?: boolean }).__loaded) return;
     let url = pathname;
     const qs = searchParams.toString();
