@@ -26,7 +26,8 @@ User's chosen direction (2026-06-24): switch to a persistent **localStorage** id
 ## Scope
 
 ### In scope
-- **`PostHogProvider.tsx`**: `persistence: 'memory'` → `'localStorage'`; add `person_profiles: 'identified_only'`; keep `autocapture: false` and `disable_session_recording: true`. Add an App-Router page-view tracker so `$pageview` fires on every route change (fixes the SPA under-count).
+- **`PostHogProvider.tsx`**: `persistence: 'memory'` → `'localStorage'`; add `person_profiles: 'identified_only'`; keep `autocapture: false` and `disable_session_recording: true`; point `api_host` at the `/ingest` reverse proxy (see below). Add an App-Router page-view tracker so `$pageview` fires on every route change (fixes the SPA under-count).
+- **Reverse proxy (`next.config.ts`)**: rewrite `/ingest/*` → PostHog (US ingestion + assets hosts) and set `api_host: '/ingest'` so analytics ride first-party `isitsmut.com`. Ad-blockers block PostHog's hostnames by default; routing through our own domain recovers those otherwise-invisible visitors — directly improving count accuracy. (Adopted from the PostHog Wizard's recommended setup; the rest of the Wizard's opinionated defaults — cookie persistence, autocapture — are intentionally *not* used, as they conflict with the no-banner / privacy-lean decisions here.)
 - **New `src/lib/analytics.ts`**: a thin client helper `track(event, properties?)` guarded on PostHog being loaded, plus named event-name constants. Single point of contact with `posthog-js`.
 - **New `<TrackOnMount>`** client component: fires a given event once on mount (for the server-rendered no-score branch).
 - **Four custom events**, each fired at its real chokepoint (see Design C).
@@ -53,6 +54,14 @@ User's chosen direction (2026-06-24): switch to a persistent **localStorage** id
 - `persistence: 'localStorage'` — stable anonymous distinct_id across reloads/tabs, so PostHog dedupes returning visitors. Chosen over the `'localStorage+cookie'` default specifically to avoid writing a cookie, keeping the "we don't set analytics cookies" story honest and supporting the no-banner decision.
 - `person_profiles: 'identified_only'` — anonymous events still carry the persistent distinct_id (so DAU/unique-visitor counts work), but no person-profile rows are created for anonymous users (cost-friendly, and we have no logins anyway).
 - Keep `autocapture: false`, `disable_session_recording: true`, `capture_pageview` (see B).
+- `api_host: '/ingest'`, `ui_host: 'https://us.posthog.com'` — send ingestion through the first-party reverse proxy (see A2); `ui_host` keeps dashboard deep-links pointing at the real PostHog app.
+
+### A2. Reverse proxy (`next.config.ts`)
+Add `rewrites()` so first-party `/ingest/*` forwards to PostHog (US region), plus `skipTrailingSlashRedirect: true`:
+- `/ingest/static/:path*` → `https://us-assets.i.posthog.com/static/:path*` (the posthog-js asset bundle), listed **first** so it wins over the catch-all.
+- `/ingest/:path*` → `https://us.i.posthog.com/:path*` (event ingestion + feature-flag endpoints).
+
+Rationale: ad-blocker filter lists block PostHog's hostnames, silently dropping a slice of every metric. Serving analytics from `isitsmut.com/ingest` defeats hostname-based blocking and recovers those visitors, which is the whole point of this effort. (If the project's PostHog region is ever EU, swap to `eu.i.posthog.com` / `eu-assets.i.posthog.com`; the project is US today.)
 
 ### B. SPA page-view capture (`PostHogProvider.tsx`)
 Add a `<PostHogPageView>` client component that reads `usePathname()` + `useSearchParams()` and calls `posthog.capture('$pageview')` on change. It is wrapped in `<Suspense>` (App Router requires `useSearchParams` consumers to be suspense-bounded) and rendered inside the provider. Set `capture_pageview: false` in `posthog.init` so the initial load isn't double-counted, since `<PostHogPageView>` fires on first mount too. Result-page URLs already carry `title`/`creator` in search params; capturing them in the `$pageview` is fine (they're already public in the URL).
@@ -88,7 +97,7 @@ Prop threading: `SpoilerReveal` and `ShareButton` currently receive only what th
 Update the page-views bullet to state that PostHog stores a **persistent anonymous identifier in your browser's localStorage (not a cookie)** to count returning visitors, and that we record **anonymous interaction events** (searches — including the title you looked up — reveals, and shares) not tied to your identity. Keep "We don't use ads (yet)." Bump "Last updated" to 2026-06-24.
 
 ## Data flow
-No server/API path changes. All capture is client-side via `posthog-js`. Page views fire from `<PostHogPageView>` on route change; the four events fire from their components/mount. PostHog continues to ingest to `NEXT_PUBLIC_POSTHOG_HOST`. Supabase `view_count` bumping is unchanged and independent.
+All capture is client-side via `posthog-js`. Page views fire from `<PostHogPageView>` on route change; the four events fire from their components/mount. Ingestion goes to first-party `/ingest`, which `next.config.ts` rewrites to PostHog's US hosts (no app/API route logic changes — rewrites are transport only). Supabase `view_count` bumping is unchanged and independent.
 
 ## Error handling
 - `track()` and `<PostHogPageView>` are **best-effort**: if PostHog isn't loaded (missing key, blocked, SSR, tests) they no-op silently. Analytics must never throw into a user interaction — capture calls are not awaited and are guarded.
@@ -97,7 +106,8 @@ No server/API path changes. All capture is client-side via `posthog-js`. Page vi
 ## Testing
 **Unit (Vitest):**
 - `analytics.track`: no-ops when posthog isn't loaded (no key / `__loaded` falsy); calls `posthog.capture` with the event name + properties when loaded. (`posthog-js` mocked.)
-- `PostHogProvider`: `posthog.init` is called with `persistence: 'localStorage'`, `autocapture: false`, `capture_pageview: false`. (`posthog-js` mocked.)
+- `PostHogProvider`: `posthog.init` is called with `persistence: 'localStorage'`, `autocapture: false`, `capture_pageview: false`, `api_host: '/ingest'`. (`posthog-js` mocked.)
+- `next.config.ts`: `rewrites()` returns the two `/ingest/*` → PostHog mappings, assets rule first. (Plain function call, no Next runtime.)
 
 **Component (Vitest + Testing Library, `track` helper mocked):**
 - `SpoilerReveal`: clicking to reveal calls `track('details_revealed', { slug, medium, score })`; still reveals the content.
@@ -111,7 +121,7 @@ No server/API path changes. All capture is client-side via `posthog-js`. Page vi
 - Trigger each event; confirm arrival in PostHog with properties.
 
 ## Risks & notes
-- **Ad-blockers** drop client-side PostHog for some visitors, so numbers are a floor, not exact — acceptable for trend/decision purposes. Server-side capture (out of scope) would mitigate if it ever matters.
+- **Ad-blockers**: the `/ingest` reverse proxy defeats *hostname-based* blocking (the common case), recovering most otherwise-lost visitors. Aggressive blockers can still block by URL-path pattern or by blocking the posthog-js script itself, so numbers remain a floor — but a much higher one than without the proxy. Server-side capture (still out of scope) would close the remaining gap if it ever matters.
 - **Search-term capture** stores the looked-up title in analytics (previously the title only went to Anthropic). This is disclosed in the privacy update and is anonymous; it's also valuable SEO/seed signal (what people actually search). Flagged so the privacy change isn't overlooked.
 - **No consent banner** is a deliberate, user-approved trade-off for a small US-leaning site using first-party localStorage analytics. The moment ads go live, the Ads spec must add a CMP — at which point analytics may need to gate on consent.
 - **`person_profiles: 'identified_only'`** assumes anonymous events still dedupe by distinct_id for unique-visitor counts (they do in PostHog). Confirmed by the live distinct_id check above.
