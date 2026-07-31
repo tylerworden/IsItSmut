@@ -58,7 +58,7 @@ Turn IsItSmut into a passive, ad-supported property. Display ads via **Google Ad
 ## Design details
 
 ### A. `AdSlot` component
-Client component, props: `slot` (the AdSense slot ID string) and optional `className`. Reads `NEXT_PUBLIC_ADSENSE_CLIENT` at module level. Returns `null` unless both client and slot are non-empty. Otherwise renders:
+Client component, props: `slot` (the AdSense slot ID string) and optional `className`. Reads `process.env.NEXT_PUBLIC_ADSENSE_CLIENT` at render time (not module level, so tests can stub it per-test). Returns `null` unless both client and slot are non-empty. Otherwise renders:
 
 ```
 <div className="min-h-[280px] ...">   ← reserved space, tiny "Advertisement" caption
@@ -70,7 +70,7 @@ Client component, props: `slot` (the AdSense slot ID string) and optional `class
 
 `useEffect` on mount: `(window.adsbygoogle = window.adsbygoogle || []).push({})`, wrapped in try/catch (throws are non-fatal — e.g. ad blockers, double-push in dev StrictMode; guard against double-push on the same `<ins>`).
 
-Server pages (`/r/[slug]` is SSR, hubs are ISR) simply render `<AdSlot slot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_RESULT ?? ''} />` — the component self-gates, so call sites stay unconditional and dumb.
+Server pages (`/r/[slug]` is SSR, hubs are ISR) simply render `<AdSlot slot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_RESULT} />` — the component self-gates, so call sites stay unconditional and dumb.
 
 ### B. Loader script (`layout.tsx`)
 ```
