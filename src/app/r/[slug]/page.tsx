@@ -6,6 +6,7 @@ import { JsonLd } from '@/components/JsonLd';
 import { resultMetadata, buildJsonLd } from '@/lib/seo';
 import { RelatedTitles } from '@/components/RelatedTitles';
 import { getRelatedTitles } from '@/lib/related';
+import { AdSlot } from '@/components/AdSlot';
 import type { Work, Medium } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -58,6 +59,7 @@ export default async function ResultPage({ params, searchParams }: PageProps) {
     <>
       {rating.known && <JsonLd data={buildJsonLd(work, rating)} />}
       <ResultCard work={work} rating={rating} shareUrl={shareUrl} />
+      {rating.known && <AdSlot slot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_RESULT} className="mt-6" />}
       {rating.known && <RelatedTitles entries={related} medium={work.medium} />}
     </>
   );
