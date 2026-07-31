@@ -21,7 +21,7 @@ Turn IsItSmut into a passive, ad-supported property. Display ads via **Google Ad
 
 ## Sequencing (approval is the long pole)
 
-1. **Tyler (operator, first, ~10 min):** create the AdSense account at adsense.google.com with the Google account, add site `isitsmut.com`. This immediately yields the **publisher ID** (`ca-pub-XXXXXXXXXXXXXXXX`) — no approval needed for the ID. Then create two **display ad units** in the dashboard (name them `result-page` and `hub-page`, responsive) — this yields two **slot IDs**. Hand all three IDs to the assistant.
+1. **Tyler (operator, first, ~10 min):** create the AdSense account at adsense.google.com with the Google account, add site `isitsmut.com`. This immediately yields the **publisher ID** — **DONE 2026-07-30: `ca-pub-3955040205852001`**. The two **display ad units** (`result-page`, `hub-page` → slot IDs) cannot be created yet — the new account's dashboard hasn't unlocked the Ads section. **Slot IDs arrive later**; the build ships with slot env vars unset (slots render nothing) and they're added post-unlock as a 2-minute follow-up. The loader script + `ads.txt` alone are sufficient for Google's site review.
 2. **Build (assistant):** everything in Scope below, behind env-var gating; PR; Tyler confirms; merge → prod deploy.
 3. **Tyler (operator):** in AdSense → Sites, request review of isitsmut.com (the ad code must already be live on the site — it is after step 2). Also configure **Privacy & messaging**: enable the GDPR (EEA/UK) message and the US states message, choosing Google's standard styling.
 4. **Wait for Google review** (days to weeks, async). Slots render as blank/collapsed space until approval; on approval ads appear with no further deploy.
@@ -36,7 +36,7 @@ Turn IsItSmut into a passive, ad-supported property. Display ads via **Google Ad
   - Result pages `/r/[slug]`: one slot, below the rating card, above related titles — **only when the rating is `known:true`** (no-score pages are noindex/thin; no ads there).
   - Hub pages `/books /movies /tv /tamest /top`: one slot after the list.
   - **No ads** on the homepage, `/about`, `/privacy`, `/terms`.
-- **`public/ads.txt`:** `google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0` (real publisher ID substituted).
+- **`public/ads.txt`:** `google.com, pub-3955040205852001, DIRECT, f08c47fec0942fa0`.
 - **Privacy policy update** (`src/app/privacy/page.tsx`): remove "no ads (yet)"; disclose Google AdSense as an advertising partner, that Google and its partners use cookies/identifiers to serve (and, with consent, personalize) ads, link to Google's ad-settings page (`https://adssettings.google.com`) and `https://policies.google.com/technologies/partner-sites`, and note that EEA/UK/US-state visitors get a consent banner with opt-out. Bump the "Last updated" date.
 - **Env vars (Vercel Production only, not Preview):** `NEXT_PUBLIC_ADSENSE_CLIENT`, `NEXT_PUBLIC_ADSENSE_SLOT_RESULT`, `NEXT_PUBLIC_ADSENSE_SLOT_HUB`.
 
