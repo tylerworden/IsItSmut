@@ -3,6 +3,7 @@ import './globals.css';
 import { SiteHeader } from '@/components/SiteHeader';
 import { Footer } from '@/components/Footer';
 import { PostHogProvider } from '@/components/PostHogProvider';
+import { AdSenseLoader } from '@/components/AdSenseLoader';
 import { SITE_URL } from '@/lib/seo';
 
 export const metadata: Metadata = {
@@ -22,6 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
+        <AdSenseLoader />
         <PostHogProvider>
           <SiteHeader />
           <main className="mx-auto max-w-xl px-5 pt-6">{children}</main>
