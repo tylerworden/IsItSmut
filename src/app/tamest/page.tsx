@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { BrowseList } from '@/components/BrowseList';
+import { AdSlot } from '@/components/AdSlot';
 import { getTamestRatings } from '@/lib/leaderboard';
 
 export const runtime = 'nodejs';
@@ -13,5 +14,10 @@ export const metadata: Metadata = {
 
 export default async function TamestPage() {
   const entries = await getTamestRatings(100);
-  return <BrowseList heading="The Tamest Picks" intro="The cleanest, least-spicy titles we've rated." entries={entries} />;
+  return (
+    <>
+      <BrowseList heading="The Tamest Picks" intro="The cleanest, least-spicy titles we've rated." entries={entries} />
+      <AdSlot slot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_HUB} className="mt-8" />
+    </>
+  );
 }

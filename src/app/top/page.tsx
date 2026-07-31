@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { LeaderboardSection } from '@/components/LeaderboardSection';
+import { AdSlot } from '@/components/AdSlot';
 import { getTopRatings } from '@/lib/leaderboard';
 
 export const runtime = 'nodejs';
@@ -24,6 +25,7 @@ export default async function TopPage() {
         </p>
       </header>
       <LeaderboardSection entries={top} />
+      <AdSlot slot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_HUB} className="mt-8" />
     </div>
   );
 }
