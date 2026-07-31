@@ -14,10 +14,22 @@ export default function PrivacyPage() {
         <li><strong>Search queries</strong> are sent to our AI provider (Anthropic) to generate the rating. We don&apos;t tie queries to your identity.</li>
         <li><strong>Rate-limit counters</strong> use a salted hash of your IP address. We never store the raw IP.</li>
         <li><strong>Cookies:</strong> only a short-lived captcha bypass cookie if you&apos;ve solved a captcha recently.</li>
+        <li>
+          <strong>Advertising:</strong> we show ads via Google AdSense. Google and its partners
+          use cookies and similar technologies to serve and measure ads and — where you consent —
+          to personalize them. Visitors in the EEA, UK, and certain US states see a consent banner
+          with their choices first. You can manage ad personalization at{' '}
+          <a href="https://adssettings.google.com">adssettings.google.com</a> and read how Google
+          uses data at{' '}
+          <a href="https://policies.google.com/technologies/partner-sites">
+            policies.google.com/technologies/partner-sites
+          </a>
+          .
+        </li>
       </ul>
-      <p>We don&apos;t sell or share your data. We don&apos;t use ads (yet).</p>
+      <p>Aside from the advertising partners described above, we don&apos;t sell or share your data.</p>
       <p>Questions? Email tworden1993@gmail.com.</p>
-      <p>Last updated: 2026-06-24.</p>
+      <p>Last updated: 2026-07-30.</p>
     </article>
   );
 }
