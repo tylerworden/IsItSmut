@@ -1,9 +1,10 @@
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import { supabaseServer } from '@/lib/supabase-server';
 import { getCachedRating, runRate, bumpViewCount } from '@/lib/rate';
 import { ResultCard } from '@/components/ResultCard';
 import { JsonLd } from '@/components/JsonLd';
 import { resultMetadata, buildJsonLd } from '@/lib/seo';
+import { getCanonicalSlug } from '@/lib/aliases';
 import { RelatedTitles } from '@/components/RelatedTitles';
 import { getRelatedTitles } from '@/lib/related';
 import { AdSlot } from '@/components/AdSlot';
@@ -27,6 +28,12 @@ export default async function ResultPage({ params, searchParams }: PageProps) {
   const search = await searchParams;
 
   let work = await fetchWork(slug);
+
+  if (!work) {
+    const canonical = await getCanonicalSlug(slug);
+    if (canonical) permanentRedirect(`/r/${canonical}`);
+  }
+
   let rating = await getCachedRating(slug);
 
   if (!work && (!search.title || !search.creator || !search.medium)) {
@@ -69,6 +76,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const work = await fetchWork(slug);
   if (!work) {
+    const canonical = await getCanonicalSlug(slug);
+    if (canonical) permanentRedirect(`/r/${canonical}`);
     return { title: 'Not found — IsItSmut', robots: { index: false, follow: true } };
   }
   const rating = await getCachedRating(slug);

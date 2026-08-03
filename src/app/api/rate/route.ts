@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getCanonicalSlug } from '@/lib/aliases';
 import { getCachedRating, runRate } from '@/lib/rate';
 import { checkAndIncrement } from '@/lib/rate-limit';
 import { hashIp } from '@/lib/hash';
@@ -31,8 +32,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'missing_fields' }, { status: 400 });
   }
 
+  // A merged-away slug must not be resurrected via upsert — serve its canonical.
+  const slug = (await getCanonicalSlug(body.slug)) ?? body.slug;
+
   // Cache-first: bypasses rate limit entirely.
-  const cached = await getCachedRating(body.slug);
+  const cached = await getCachedRating(slug);
   if (cached) {
     return NextResponse.json({ rating: cached, cacheHit: true });
   }
@@ -49,7 +53,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const result = await runRate({ slug: body.slug, candidate: body.candidate });
+    const result = await runRate({ slug, candidate: body.candidate });
     return NextResponse.json(result);
   } catch (err) {
     console.error('rate error', err);
