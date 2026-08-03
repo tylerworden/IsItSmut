@@ -9,7 +9,7 @@ export const SITE_URL = (process.env.NEXT_PUBLIC_SHARE_BASE_URL ?? 'https://isit
 type KnownRating = Extract<Rating, { known: true }>;
 
 export function buildQuestionAnswer(work: Work, rating: KnownRating): string {
-  return `Is ${work.title} smut? ${rating.verdict} It scores ${rating.score}/10 for sexual content.`;
+  return `Is ${work.title} smut? ${rating.verdict} Spice level: ${rating.score}/10 for sexual content.`;
 }
 
 const WORK_TYPE: Record<Medium, string> = { book: 'Book', movie: 'Movie', tv: 'TVSeries' };
@@ -48,15 +48,22 @@ export function resultMetadata(work: Work, rating: Rating): Metadata {
       robots: { index: false, follow: true },
     };
   }
-  const title = `Is "${work.title}" Smut? ${rating.verdict} (${rating.score}/10) — IsItSmut`;
+  // SERP snippet: full tease — no verdict/score, so the click is the only way
+  // to get the answer. Social cards below stay answer-first on purpose:
+  // Google ignores OG tags, and a share card wants the verdict visible.
+  const title = `Is ${work.title} Smut? Spice Level & Scene Guide — IsItSmut`;
   const description = clamp(
+    `Wondering if ${work.title} by ${work.creator} is smut? Get the verdict, the 1–10 spice level, what's actually in it, and who it's OK for — spoiler-free.`
+  );
+  const socialTitle = `Is "${work.title}" Smut? ${rating.verdict} (${rating.score}/10) — IsItSmut`;
+  const socialDescription = clamp(
     `${rating.verdict} ${work.title} by ${work.creator} scores ${rating.score}/10 for sexual content. ${rating.synopsis}`
   );
   return {
     title,
     description,
     alternates: { canonical },
-    openGraph: { title, description, type: 'article', url: canonical },
-    twitter: { card: 'summary_large_image', title, description },
+    openGraph: { title: socialTitle, description: socialDescription, type: 'article', url: canonical },
+    twitter: { card: 'summary_large_image', title: socialTitle, description: socialDescription },
   };
 }

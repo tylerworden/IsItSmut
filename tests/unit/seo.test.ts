@@ -24,9 +24,9 @@ describe('SITE_URL', () => {
 });
 
 describe('buildQuestionAnswer', () => {
-  it('produces a spoiler-safe Q&A line for a known rating', () => {
+  it('answers instantly with spice-level vocabulary', () => {
     expect(buildQuestionAnswer(work, known)).toBe(
-      'Is Fourth Wing smut? Yes, it\'s smut. It scores 8/10 for sexual content.'
+      'Is Fourth Wing smut? Yes, it\'s smut. Spice level: 8/10 for sexual content.'
     );
   });
 });
@@ -63,16 +63,21 @@ describe('buildJsonLd', () => {
 });
 
 describe('resultMetadata', () => {
-  it('builds indexable metadata for a known rating', () => {
+  it('teases the SERP snippet but keeps answer-first social cards', () => {
     const m = resultMetadata(work, known);
-    expect(m.title).toBe('Is "Fourth Wing" Smut? Yes, it\'s smut. (8/10) — IsItSmut');
-    expect(m.alternates?.canonical).toBe('/r/fourth-wing-yarros-2023');
-    // robots undefined/index:true => indexable
-    expect(m.robots).toBeUndefined();
-    expect(m.openGraph?.title).toBe('Is "Fourth Wing" Smut? Yes, it\'s smut. (8/10) — IsItSmut');
-    expect((m.twitter as { card?: string })?.card).toBe('summary_large_image');
-    expect(typeof m.description).toBe('string');
+    // SERP: no verdict, no score — the click is the only way to get the answer.
+    expect(m.title).toBe('Is Fourth Wing Smut? Spice Level & Scene Guide — IsItSmut');
+    expect(m.description).toContain('spice level');
+    expect(m.description).not.toContain('8/10');
+    expect(m.description).not.toContain("Yes, it's smut.");
     expect((m.description as string).length).toBeLessThanOrEqual(160);
+    // Social cards keep the verdict+score — there, the answer IS the content.
+    expect(m.openGraph?.title).toBe('Is "Fourth Wing" Smut? Yes, it\'s smut. (8/10) — IsItSmut');
+    expect((m.openGraph as { description?: string })?.description).toContain('8/10');
+    expect((m.twitter as { title?: string })?.title).toBe('Is "Fourth Wing" Smut? Yes, it\'s smut. (8/10) — IsItSmut');
+    expect((m.twitter as { card?: string })?.card).toBe('summary_large_image');
+    expect(m.alternates?.canonical).toBe('/r/fourth-wing-yarros-2023');
+    expect(m.robots).toBeUndefined();
   });
 
   it('noindexes an unknown rating but keeps a canonical', () => {
