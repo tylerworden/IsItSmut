@@ -8,18 +8,34 @@ vi.mock('@/lib/claude', () => ({
   })),
 }));
 
+const { existingWorks } = vi.hoisted(() => ({
+  existingWorks: [] as Array<{ slug: string; medium: string }>,
+}));
+
 vi.mock('@/lib/supabase-server', () => ({
   supabaseServer: () => ({
     from: () => ({
       select: () => ({
-        eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }),
+        like: async (_col: string, pattern: string) => ({
+          data: existingWorks.filter((w) => w.slug.startsWith(pattern.slice(0, -1))),
+          error: null,
+        }),
+        eq: (_col: string, slug: string) => ({
+          maybeSingle: async () => ({
+            data: existingWorks.find((w) => w.slug === slug) ?? null,
+            error: null,
+          }),
+        }),
       }),
     }),
   }),
 }));
 
 describe('runDisambiguate', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    existingWorks.length = 0;
+  });
 
   it('attaches a slug to each candidate', async () => {
     const result = await runDisambiguate('fourth wing');
@@ -32,5 +48,23 @@ describe('runDisambiguate', () => {
     vi.mocked(claude.callDisambiguate).mockResolvedValueOnce({ candidates: [] });
     const result = await runDisambiguate('asdkjhasdkjhaskdjh');
     expect(result.candidates).toEqual([]);
+  });
+
+  it('reuses the existing slug when the same work already exists', async () => {
+    existingWorks.push({ slug: 'fourth-wing-yarros-2023', medium: 'book' });
+    const result = await runDisambiguate('fourth wing');
+    expect(result.candidates[0].slug).toBe('fourth-wing-yarros-2023');
+  });
+
+  it('reuses the existing slug when only the year differs (AI year wobble)', async () => {
+    existingWorks.push({ slug: 'fourth-wing-yarros-2022', medium: 'book' });
+    const result = await runDisambiguate('fourth wing');
+    expect(result.candidates[0].slug).toBe('fourth-wing-yarros-2022');
+  });
+
+  it('hash-suffixes when the same slug belongs to a different medium', async () => {
+    existingWorks.push({ slug: 'fourth-wing-yarros-2023', medium: 'movie' });
+    const result = await runDisambiguate('fourth wing');
+    expect(result.candidates[0].slug).toMatch(/^fourth-wing-yarros-2023-[0-9a-f]{4}$/);
   });
 });
