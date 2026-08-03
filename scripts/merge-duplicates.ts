@@ -66,13 +66,21 @@ async function merge(): Promise<void> {
   const sb = supabaseServer();
   for (const { dupe, canonical } of MERGES) {
     console.log(`\n${dupe} → ${canonical}`);
-    const { data: dupeWork } = await sb.from('works').select('slug').eq('slug', dupe).maybeSingle();
-    const { data: alias } = await sb.from('aliases').select('alias_slug').eq('alias_slug', dupe).maybeSingle();
+    const { data: dupeWork, error: dupeWorkErr } = await sb.from('works').select('slug').eq('slug', dupe).maybeSingle();
+    const { data: alias, error: aliasErr } = await sb.from('aliases').select('alias_slug').eq('alias_slug', dupe).maybeSingle();
+    const { data: canonWork, error: canonWorkErr } = await sb.from('works').select('slug').eq('slug', canonical).maybeSingle();
+    const { data: canonRating, error: canonRatingErr } = await sb.from('ratings').select('slug').eq('slug', canonical).maybeSingle();
+    const { data: dupeRating, error: dupeRatingErr } = await sb.from('ratings').select('slug').eq('slug', dupe).maybeSingle();
+
+    // Check all reads before proceeding with writes
+    const readErrors = [dupeWorkErr, aliasErr, canonWorkErr, canonRatingErr, dupeRatingErr].filter(e => e);
+    if (readErrors.length > 0) {
+      console.error(`  ✗ read failed: ${readErrors.map(e => String(e)).join('; ')}`);
+      continue;
+    }
+
     if (alias && !dupeWork) { console.log('  already merged — skipping'); continue; }
-    const { data: canonWork } = await sb.from('works').select('slug').eq('slug', canonical).maybeSingle();
     if (!canonWork) { console.error('  ✗ canonical work missing — skipping (fix MERGES?)'); continue; }
-    const { data: canonRating } = await sb.from('ratings').select('slug').eq('slug', canonical).maybeSingle();
-    const { data: dupeRating } = await sb.from('ratings').select('slug').eq('slug', dupe).maybeSingle();
     if (!canonRating && dupeRating) {
       const { error } = await sb.from('ratings').update({ slug: canonical }).eq('slug', dupe);
       if (error) { console.error('  ✗ rating move failed', error); continue; }
@@ -83,8 +91,8 @@ async function merge(): Promise<void> {
       if (error) { console.error('  ✗ works delete failed', error); continue; }
       console.log('  dupe work deleted');
     }
-    const { error: aliasErr } = await sb.from('aliases').upsert({ alias_slug: dupe, canonical_slug: canonical });
-    if (aliasErr) { console.error('  ✗ alias upsert failed', aliasErr); continue; }
+    const { error: aliasUpsertErr } = await sb.from('aliases').upsert({ alias_slug: dupe, canonical_slug: canonical });
+    if (aliasUpsertErr) { console.error('  ✗ alias upsert failed', aliasUpsertErr); continue; }
     console.log('  ✓ alias written');
   }
   console.log('\n=== merge complete ===');
