@@ -64,8 +64,11 @@ async function scan(): Promise<void> {
 
 async function merge(): Promise<void> {
   const sb = supabaseServer();
+  let failed = 0;
   for (const { dupe, canonical } of MERGES) {
     console.log(`\n${dupe} → ${canonical}`);
+    // A self-pair would delete the canonical work and write a redirect loop.
+    if (dupe === canonical) { console.error('  ✗ dupe === canonical — skipping (fix MERGES)'); failed++; continue; }
     const { data: dupeWork, error: dupeWorkErr } = await sb.from('works').select('slug').eq('slug', dupe).maybeSingle();
     const { data: alias, error: aliasErr } = await sb.from('aliases').select('alias_slug').eq('alias_slug', dupe).maybeSingle();
     const { data: canonWork, error: canonWorkErr } = await sb.from('works').select('slug').eq('slug', canonical).maybeSingle();
@@ -73,30 +76,35 @@ async function merge(): Promise<void> {
     const { data: dupeRating, error: dupeRatingErr } = await sb.from('ratings').select('slug').eq('slug', dupe).maybeSingle();
 
     // Check all reads before proceeding with writes
-    const readErrors = [dupeWorkErr, aliasErr, canonWorkErr, canonRatingErr, dupeRatingErr].filter(e => e);
+    const readErrors = [dupeWorkErr, aliasErr, canonWorkErr, canonRatingErr, dupeRatingErr]
+      .flatMap((e) => (e ? [e] : []));
     if (readErrors.length > 0) {
-      console.error(`  ✗ read failed: ${readErrors.map(e => String(e)).join('; ')}`);
+      console.error(`  ✗ read failed: ${readErrors.map((e) => `${e.code}: ${e.message}`).join('; ')}`);
+      failed++;
       continue;
     }
 
     if (alias && !dupeWork) { console.log('  already merged — skipping'); continue; }
-    if (!canonWork) { console.error('  ✗ canonical work missing — skipping (fix MERGES?)'); continue; }
+    if (!canonWork) { console.error('  ✗ canonical work missing — skipping (fix MERGES?)'); failed++; continue; }
     if (!canonRating && dupeRating) {
       const { error } = await sb.from('ratings').update({ slug: canonical }).eq('slug', dupe);
-      if (error) { console.error('  ✗ rating move failed', error); continue; }
+      if (error) { console.error('  ✗ rating move failed', error); failed++; continue; }
       console.log('  rating moved to canonical');
     }
     if (dupeWork) {
       const { error } = await sb.from('works').delete().eq('slug', dupe); // cascades to ratings
-      if (error) { console.error('  ✗ works delete failed', error); continue; }
+      if (error) { console.error('  ✗ works delete failed', error); failed++; continue; }
       console.log('  dupe work deleted');
     }
     const { error: aliasUpsertErr } = await sb.from('aliases').upsert({ alias_slug: dupe, canonical_slug: canonical });
-    if (aliasUpsertErr) { console.error('  ✗ alias upsert failed', aliasUpsertErr); continue; }
+    if (aliasUpsertErr) { console.error('  ✗ alias upsert failed', aliasUpsertErr); failed++; continue; }
     console.log('  ✓ alias written');
   }
-  console.log('\n=== merge complete ===');
+  console.log(`\n=== merge complete — ${failed} of ${MERGES.length} pair(s) failed ===`);
+  if (failed > 0) process.exit(1);
 }
 
 const mode = process.argv.includes('--merge') ? merge : scan;
-mode().then(() => process.exit(0));
+mode()
+  .then(() => process.exit(0))
+  .catch((err) => { console.error(err); process.exit(1); });
