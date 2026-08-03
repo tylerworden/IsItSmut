@@ -33,8 +33,11 @@ const params = (slug: string) => Promise.resolve({ slug });
 
 describe('alias redirect', () => {
   it('generateMetadata permanently redirects an alias slug to its canonical', async () => {
+    // Next's redirect digest is `NEXT_REDIRECT;<type>;<url>;<statusCode>;`. Pin the URL
+    // immediately followed by `;308;` so a regression to redirect() (307, temporary)
+    // fails this assertion instead of silently passing.
     await expect(generateMetadata({ params: params('blood-and-ash-armentrout-2020') })).rejects.toMatchObject({
-      digest: expect.stringContaining('/r/from-blood-and-ash-armentrout-2020'),
+      digest: expect.stringMatching(/\/r\/from-blood-and-ash-armentrout-2020;308;/),
     });
   });
 
@@ -42,7 +45,7 @@ describe('alias redirect', () => {
     await expect(
       ResultPage({ params: params('blood-and-ash-armentrout-2020'), searchParams: Promise.resolve({}) })
     ).rejects.toMatchObject({
-      digest: expect.stringContaining('/r/from-blood-and-ash-armentrout-2020'),
+      digest: expect.stringMatching(/\/r\/from-blood-and-ash-armentrout-2020;308;/),
     });
   });
 
