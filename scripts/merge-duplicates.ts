@@ -22,8 +22,10 @@ import { supabaseServer } from '../src/lib/supabase-server';
 
 // Curated from the 2026-08-02 GSC report; confirm with --scan before --merge.
 const MERGES: Array<{ dupe: string; canonical: string }> = [
-  // hash-suffix twin minted by the old raw-string identity comparison
+  // hash-suffix twins minted by the old raw-string identity comparison
   { dupe: 'fifty-shades-of-grey-james-2011-4f3e', canonical: 'fifty-shades-of-grey-james-2011' },
+  // second twin surfaced by --scan during the 2026-08-02 rollout
+  { dupe: 'fifty-shades-of-grey-james-2011-0d82', canonical: 'fifty-shades-of-grey-james-2011' },
   // AI year wobble; ACOSF's real publication year is 2021
   { dupe: 'a-court-of-silver-flames-maas-2020', canonical: 'a-court-of-silver-flames-maas-2021' },
   // AI title variant; the book is "From Blood and Ash"
